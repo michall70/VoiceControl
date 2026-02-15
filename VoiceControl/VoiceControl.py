@@ -71,14 +71,17 @@ class VoiceCmd(Node):
         timer_period = 0.1  # seconds
         self.timer = self.create_timer(timer_period, self.cmdloop_callback)
         self.trajectory_msg = TrajectorySetpoint()
+        self.trajectory_msg.position[0] = 0
+        self.trajectory_msg.position[1] = 0
+        self.trajectory_msg.position[2] = -10        #默认飞行高度10米
 
         self.nav_state = VehicleStatus.NAVIGATION_STATE_MAX
         self.arming_state = VehicleStatus.ARMING_STATE_DISARMED
 
     def vehicle_status_callback(self, msg):
         # TODO: handle NED->ENU transformation
-        print("NAV_STATUS: ", msg.nav_state)
-        print("  - offboard status: ", VehicleStatus.NAVIGATION_STATE_OFFBOARD)
+        # print("NAV_STATUS: ", msg.nav_state)
+        # print("  - offboard status: ", VehicleStatus.NAVIGATION_STATE_OFFBOARD)
         self.nav_state = msg.nav_state
         self.arming_state = msg.arming_state
 
@@ -95,19 +98,19 @@ class VoiceCmd(Node):
         if (self.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD and self.arming_state == VehicleStatus.ARMING_STATE_ARMED):
             self.publisher_trajectory.publish(self.trajectory_msg)
 
-    def send_trajectory(self, east, north, up): # 发送无人机位置指令NED
-        self.trajectory_msg.position[0] = north
-        self.trajectory_msg.position[1] = east
-        self.trajectory_msg.position[2] = up
+    def send_trajectory(self, north, east, up): # 发送无人机位置指令NED 相对坐标
+        self.trajectory_msg.position[0] += north
+        self.trajectory_msg.position[1] += east
+        self.trajectory_msg.position[2] += up
         self.publisher_trajectory.publish(self.trajectory_msg)
 
 @tool
 def drone_control(direction: str, distance: int) -> str:
     """
     指定无人机的飞行方向和距离。
-    direction: 东、西、南、北、上、下
-    distance: 飞行距离，单位米
-    返回一个 TrajectorySetpoint 消息对象，包含无人机的目标位置。
+    direction: 东、西、南、北、上、下，请默认输入北
+    distance: 飞行距离，单位米，请默认输入50米
+    返回指令执行结果字符串
     """
     global Voice_Cmd
     if Voice_Cmd == None:
@@ -131,8 +134,8 @@ def drone_control(direction: str, distance: int) -> str:
     
     east = x * distance
     north = y * distance
-    up = z * distance
-    Voice_Cmd.send_trajectory(east, north, up)
+    up = -z * distance  # ROS 中上升是负值，下降是正值
+    Voice_Cmd.send_trajectory(north, east, up)
     return f"✅ 已发送无人机飞行指令：方向 {direction}，距离 {distance} 米。"
 
 # ros线程函数
@@ -166,6 +169,19 @@ def main(args=None):
         # 调用 Agent
         result = agent.invoke({"messages": [("human", user_input)]}, config)
         print(f"🤖 AI: {result['messages'][-1].content}")
+    
+    print("\n=== 🕵️‍♀️ 侦探模式：查看 AI 的完整思考过程 ===")
+    all_messages = result["messages"]
+
+    for msg in all_messages:
+        # msg.type 告诉你是谁说的 (human, ai, tool)
+        # msg.content 是具体内容
+        print(f"\n【角色: {msg.type}】")
+        print(f"内容: {msg.content}")
+        
+        # 如果是 AI 想要调用工具，打印一下它想调用的细节（进阶查看）
+        if hasattr(msg, 'tool_calls') and msg.tool_calls:
+            print(f"   (动作: AI 决定调用工具 -> {msg.tool_calls})")
 
     Voice_Cmd.destroy_node()
     rclpy.shutdown()

@@ -24,9 +24,9 @@ setup(
     },
     entry_points={
         'console_scripts': [
-                'offboard_control_dk = px4_offboard.offboard_control_dk:main',
-                'offboard_control_tst = px4_offboard.offboard_control_tst:main',
-                'VoiceControl = px4_offboard.VoiceControl:main',
+                'offboard_control_dk = VoiceControl.offboard_control_dk:main',
+                'offboard_control_tst = VoiceControl.offboard_control_tst:main',
+                'VoiceControl = VoiceControl.runner:main',
         ],
     },
 )
