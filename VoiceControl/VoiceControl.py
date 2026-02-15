@@ -11,9 +11,6 @@ from px4_msgs.msg import OffboardControlMode
 from px4_msgs.msg import TrajectorySetpoint
 from px4_msgs.msg import VehicleStatus
 
-agent_path = "/home/michall/gemini-agent"
-if agent_path not in sys.path:
-    sys.path.append(agent_path)
 from dotenv import load_dotenv
 import os
 from langchain_community.chat_models import ChatTongyi
