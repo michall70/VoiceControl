@@ -26,7 +26,7 @@ setup(
         'console_scripts': [
                 'offboard_control_dk = VoiceControl.offboard_control_dk:main',
                 'offboard_control_tst = VoiceControl.offboard_control_tst:main',
-                'VoiceControl = VoiceControl.runner:main',
+                'VoiceControl = VoiceControl.VoiceControl:main',
         ],
     },
 )

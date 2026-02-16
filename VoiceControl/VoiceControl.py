@@ -95,16 +95,23 @@ class VoiceCmd(Node):
         if (self.nav_state == VehicleStatus.NAVIGATION_STATE_OFFBOARD and self.arming_state == VehicleStatus.ARMING_STATE_ARMED):
             self.publisher_trajectory.publish(self.trajectory_msg)
 
-    def send_trajectory(self, north, east, up): # 发送无人机位置指令NED 相对坐标
+    def send_displacement(self, north, east, down): # 发送无人机位置指令NED 相对坐标
         self.trajectory_msg.position[0] += north
         self.trajectory_msg.position[1] += east
-        self.trajectory_msg.position[2] += up
+        self.trajectory_msg.position[2] += down
+        self.publisher_trajectory.publish(self.trajectory_msg)
+
+    def send_point(self, north, east, down): # 发送无人机位置指令NED 绝对坐标
+        self.trajectory_msg.position[0] = north
+        self.trajectory_msg.position[1] = east
+        self.trajectory_msg.position[2] = down
         self.publisher_trajectory.publish(self.trajectory_msg)
 
 @tool
-def drone_control(direction: str, distance: int) -> str:
+def drone_displacement(direction: str, distance: int) -> str:
     """
     指定无人机的飞行方向和距离。
+    若有指定偏航角度，请先正交分解为东、西、南、北、上、下六个方向的分量，再调用此函数。
     direction: 东、西、南、北、上、下，请默认输入北
     distance: 飞行距离，单位米，请默认输入50米
     返回指令执行结果字符串
@@ -131,9 +138,25 @@ def drone_control(direction: str, distance: int) -> str:
     
     east = x * distance
     north = y * distance
-    up = -z * distance  # ROS 中上升是负值，下降是正值
-    Voice_Cmd.send_trajectory(north, east, up)
+    up = z * distance  # ROS 中上升是负值，下降是正值
+    Voice_Cmd.send_displacement(north, east, -up)
     return f"✅ 已发送无人机飞行指令：方向 {direction}，距离 {distance} 米。"
+
+@tool
+def drone_point(north: int, east: int, up: int) -> str:
+    """
+    指定无人机飞行到某个绝对位置坐标（<北>,<东>,<上>)。
+    north: 北向坐标，单位米，请默认输入0
+    east: 东向坐标，单位米，请默认输入0
+    up: 上向坐标，单位米，请默认输入10（飞行高度10米）
+    返回指令执行结果字符串
+    """
+    global Voice_Cmd
+    if Voice_Cmd == None:
+        return "❌ 错误：ROS 节点未启动。"
+
+    Voice_Cmd.send_point(north, east, -up)
+    return f"✅ 已发送无人机飞行指令：北 {north} 米，东 {east} 米，上 {up} 米。"
 
 # ros线程函数
 def start_ros_thread():
@@ -148,16 +171,18 @@ def main(args=None):
     ros_thread.start()
 
     #loading
+    agent_path = "/home/michall/gemini-agent"
     load_dotenv(os.path.join(agent_path, ".env"))
     llm = ChatTongyi(model="qwen-plus", temperature=0)
     memory = MemorySaver()
     recognizer = sr.Recognizer()
     microphone = sr.Microphone()
-    tools = [drone_control]
+    tools = [drone_displacement, drone_point]
     agent = create_agent(llm, tools, checkpointer = memory)
     config = {"configurable": {"thread_id": "user_1"}}
 
     # 命令循环
+    result = {}
     while True:
         user_input = input("👨‍✈️ 请下达飞行指令 (输入 q 退出): ")
         if user_input.lower() in ['q', 'quit']:
