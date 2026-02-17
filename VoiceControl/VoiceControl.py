@@ -17,13 +17,20 @@ from langchain_community.chat_models import ChatTongyi
 from langchain_core.tools import tool
 from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
-from langchain_tavily import TavilySearch
+
 import speech_recognition as sr
 import asyncio
 import edge_tts
 import pygame
 
+# import queue
+# import json
+# import pyaudio
+# from vosk import Model, KaldiRecognizer
+
 Voice_Cmd = None #声音命令节点
+recognizer = sr.Recognizer()
+microphone = sr.Microphone()
 
 # import gemini_agent.agent_drone as agent_drone
 
@@ -158,6 +165,69 @@ def drone_point(north: int, east: int, up: int) -> str:
     Voice_Cmd.send_point(north, east, -up)
     return f"✅ 已发送无人机飞行指令：北 {north} 米，东 {east} 米，上 {up} 米。"
 
+# 定义“嘴巴”函数：让 AI 说话
+async def text_to_speech(text):
+    output_file = "response.mp3"
+    # 使用云希的声音，非常自然
+    communicate = edge_tts.Communicate(text, "zh-CN-YunxiNeural")
+    await communicate.save(output_file)
+    
+    # 播放声音
+    pygame.mixer.init()
+    pygame.mixer.music.load(output_file)
+    pygame.mixer.music.play()
+    while pygame.mixer.music.get_busy():
+        await asyncio.sleep(1)
+    pygame.mixer.quit()
+    os.remove(output_file) # 播放完删除临时文件
+
+#loading
+agent_path = "/home/michall/gemini-agent"
+load_dotenv(os.path.join(agent_path, ".env"))
+llm = ChatTongyi(model="qwen-plus", temperature=0)
+memory = MemorySaver()
+tools = [drone_displacement, drone_point]
+agent = create_agent(llm, tools, checkpointer = memory)
+config = {"configurable": {"thread_id": "user_1"}}
+result = {}
+
+def SpeechRecognize():
+    global result
+    print("\n🎤 语音助手正在启动（说“退出”以退出)")
+    with sr.Microphone(device_index = None) as source:
+        # 自动调节环境噪音
+        print("🎤 正在调节环境噪音，请保持安静 0.5 秒...")
+        recognizer.adjust_for_ambient_noise(source, duration=0.8)
+        
+        try:
+            print("👂 正在倾听...")
+            audio = recognizer.listen(source, timeout=5, phrase_time_limit=15)
+            
+            # 2. 语音转文字 (使用 Google 免费接口，需要代理)
+            print("⌛ 正在识别语音...")
+            user_text = recognizer.recognize_google(audio, language='zh-CN')
+            print(f"👤 你说: {user_text}")
+
+            if "退出" in user_text:
+                print("👋 再见！")
+                return
+            
+            # 3. 喂给 Agent
+            print("🤖 Agent 思考中...")
+            result = agent.invoke({"messages": [("human", user_text)]}, config)
+            
+            # 4. 打印回复
+            response = result["messages"][-1].content
+            print(f"🤖 AI: {response}")
+            # asyncio.run(text_to_speech(response))
+
+        except sr.UnknownValueError:
+            print("❓ 没听清，请再说一遍。")
+        except sr.RequestError as e:
+            print(f"❌ 语音服务出错（检查代理）: {e}")
+        except Exception as e:
+            print(f"⚠️ 发生错误: {e}")
+
 # ros线程函数
 def start_ros_thread():
     rclpy.init()
@@ -170,27 +240,19 @@ def main(args=None):
     ros_thread = threading.Thread(target=start_ros_thread, daemon=True)
     ros_thread.start()
 
-    #loading
-    agent_path = "/home/michall/gemini-agent"
-    load_dotenv(os.path.join(agent_path, ".env"))
-    llm = ChatTongyi(model="qwen-plus", temperature=0)
-    memory = MemorySaver()
-    recognizer = sr.Recognizer()
-    microphone = sr.Microphone()
-    tools = [drone_displacement, drone_point]
-    agent = create_agent(llm, tools, checkpointer = memory)
-    config = {"configurable": {"thread_id": "user_1"}}
-
     # 命令循环
-    result = {}
+    global result
     while True:
-        user_input = input("👨‍✈️ 请下达飞行指令 (输入 q 退出): ")
-        if user_input.lower() in ['q', 'quit']:
+        user_input = input("👨‍✈️ 请下达飞行指令 ( sr 语音输入， q 退出): ")
+        if user_input.lower() in ['q', 'quit', 'exit', '退出']:
             break
-            
-        # 调用 Agent
-        result = agent.invoke({"messages": [("human", user_input)]}, config)
-        print(f"🤖 AI: {result['messages'][-1].content}")
+        if user_input.lower() in ['sr', 'speech', '语音']:
+            SpeechRecognize()
+        else:
+            # 调用 Agent
+            result = agent.invoke({"messages": [("human", user_input)]}, config)
+            print(f"🤖 AI: {result['messages'][-1].content}")
+            # asyncio.run(text_to_speech(result['messages'][-1].content))
     
     print("\n=== 🕵️‍♀️ 侦探模式：查看 AI 的完整思考过程 ===")
     all_messages = result["messages"]
