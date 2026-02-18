@@ -5,8 +5,6 @@ source "$SCRIPT_DIR/env.sh"
 
 source "$SCRIPT_DIR/Setup_ROS2Offboard.sh"
 
-source "$SCRIPT_DIR/proxy.sh"
-
 bash -c "
 cd $WORKSPACE_DIR &&
 colcon build --symlink-install --packages-select VoiceControl

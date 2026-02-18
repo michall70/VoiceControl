@@ -1,0 +1,25 @@
+# VoiceControl - 语音控制无人机系统
+# Python依赖包列表
+
+# ROS2 相关
+# px4_msgs（通过ROS2安装，不需要pip）
+
+# LLM 和 Agent 相关
+langchain>=0.1.0
+langchain-community>=0.0.10
+langgraph>=0.0.8
+langchain-core>=0.1.0
+
+# 语音识别和合成
+SpeechRecognition>=3.10.0
+edge-tts>=6.1.8
+PyAudio>=0.2.13  # 可选，用于麦克风输入
+
+# 音频播放
+pygame>=2.1.0
+
+# 环境变量管理
+python-dotenv>=1.0.0
+
+# 阿里通义千问（可选）
+# dashscope>=1.0.0  # 如果使用Dashscope API

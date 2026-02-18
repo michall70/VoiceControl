@@ -6,7 +6,6 @@ import os
 
 def get_agent_packages_dir():
     """获取 agent 虚拟环境路径"""
-    # 1. 检查环境变量
     if 'AGENT_PACKAGES_DIR' in os.environ:
         return os.environ['AGENT_PACKAGES_DIR']
     return None
