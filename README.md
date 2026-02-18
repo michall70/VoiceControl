@@ -81,6 +81,12 @@ commander arm
 
 如需继续操作（例如再向东/西/上/下移动、飞往某坐标、悬停或降落），请随时告诉我！
 ```
+<video
+src="assets/videos/Demo.mp4"
+width="600"
+controls
+muted>
+</video>
 
 ## 5.注意事项
 系统可能会有麦克风增益，注意检查麦克风能否正常工作，或是调整麦克风增益
