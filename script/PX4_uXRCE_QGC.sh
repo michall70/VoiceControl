@@ -1,6 +1,7 @@
 #!/bin/bash
-QGC_PATH="/home/michall/QGroundControl-x86_64.AppImage"     #edit here if your QGroundControl is in a different location
-PX4_PATH=$HOME/PX4-Autopilot    #edit here if your PX4-Autopilot is in a different location
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/env.sh"
 
 gnome-terminal --tab --title='MicroXRCEAgent udp4' -- bash -lc 'MicroXRCEAgent udp4 -p 8888'
 

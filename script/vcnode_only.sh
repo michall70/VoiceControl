@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_DIR="$HOME/px4_ros_com_ws"        #edit here if your workspace is in a different location
+source "$SCRIPT_DIR/env.sh"
 
 source "$SCRIPT_DIR/Setup_ROS2Offboard.sh"
 

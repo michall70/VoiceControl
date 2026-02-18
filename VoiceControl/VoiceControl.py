@@ -182,8 +182,14 @@ async def text_to_speech(text):
     os.remove(output_file) # 播放完删除临时文件
 
 #loading
-agent_path = "/home/michall/gemini-agent"
-load_dotenv(os.path.join(agent_path, ".env"))
+def get_dotenv_dir():
+    """获取 .env 文件夹路径"""
+    # 1. 检查环境变量
+    if 'AGENT_DOTENV_DIR' in os.environ:
+        return os.environ['AGENT_DOTENV_DIR']
+agent_dotenv_dir = get_dotenv_dir()
+load_dotenv(os.path.join(agent_dotenv_dir, ".env"))
+
 llm = ChatTongyi(model="qwen-plus", temperature=0)
 memory = MemorySaver()
 tools = [drone_displacement, drone_point]
